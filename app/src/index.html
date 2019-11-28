@@ -12,8 +12,9 @@
 
 <body>
     <h1>A Simple Hello World Voting Application</h1>
+    <div id="adress"></div>
     <div class="table-responsive">
-        <table>
+        <table class="table table-bordered">
             <thead>
                 <tr>
                     <th>Candidate</th>
@@ -35,6 +36,7 @@
                 </tr>
             </tbody>
         </table>
+        <div id="msg"></div>
     </div>
     <input type="text" name="candidate" id="candidate">
     <button onclick="voteForCandidate()" class="btn btn-primary">Vote</button>

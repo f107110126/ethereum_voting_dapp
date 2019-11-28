@@ -1,47 +1,100 @@
-// import Web3 from "web3";
+import { default as Web3 } from 'web3';
+import { default as contract } from 'truffle-contract';
 
-web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:8545'));
+/*
+ * When you compile and deploy your Voting contract,
+ * truffle stores the abi and deployed address in a json
+ * file in the build directory. We will use this information
+ * to setup a Voting abstraction. We will use this abstraction
+ * later to create an instance of the Voting contract.
+ * Compare this against the index.js from our previous tutorial to see the difference
+ * https://gist.github.com/maheshmurthy/f6e96d6b3fff4cd4fa7f892de8a1a1b4#file-index-js
+ */
+
+const rpc_url = [
+    'https://ropsten-rpc.linkpool.io/',
+    'https://ropsten.rpc.fiews.io/v1/free'
+];
+
 let account;
-web3.eth.getAccounts().then((f) => {
-    account = f[0]
-});
 
-abi = JSON.parse('[{"inputs":[{"internalType":"bytes32[]","name":"candidateNames","type":"bytes32[]"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"constant":true,"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"candidateList","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"candidate","type":"bytes32"}],"name":"totalVotesFor","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"candidate","type":"bytes32"}],"name":"validCandidate","outputs":[{"internalType":"bool","name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"internalType":"bytes32","name":"candidate","type":"bytes32"}],"name":"voteForCandidate","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"votesReceived","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"}]');
+import voting_artifacts from '../../build/contracts/Voting.json';
 
-contract = new web3.eth.Contract(abi);
-contract.options.address = '0x12d3c9b252d010837ecff9fd2898419dcf73a16c';
-// update this contract address with your contract address
+window.Voting = contract(voting_artifacts);
 
-candidates = {
+let candidates = {
     Rama: 'candidate-1',
     Nick: 'candidate-2',
     Jose: 'candidate-3'
 }
 
-function voteForCandidate(candidate) {
-    candidateName = $('#candidate').val();
-    console.log(candidateName);
+window.voteForCandidate = function (candidate) {
+    let candidateName = $('#candidate').val();
+    try {
+        $('#msg').html('Vote has been submitted.'
+            + ' The vote count will increment as soon as the'
+            + ' vote is recorded on the blockchain. Please wait.');
+        $('#candidate').val('');
 
-    contract.methods.voteForCandidate(
-        web3.utils.asciiToHex(candidateName)
-    ).send({from: account}).then((f)=>{
-        let div_id = candidates[candidateName];
-        contract.methods.totalVotesFor(
-            web3.utils.asciiToHex(candidateName)
-        ).call().then((f)=>{
-            $('#'+div_id).html(f);
-        })
-    });
+        /*
+         * Voting.deployed() returns an instance of the contract. Every call
+         * in Truffle returns a promise which is why we have used then()
+         * everywhere we have a transaction call
+         */
+        console.log(account);
+        Voting.deployed().then(function (contractInstance) {
+            contractInstance.voteForCandidate(web3.utils.asciiToHex(candidateName), {
+                gas: 150000, from: account
+            }).then(function () {
+                let div_id = candidates[candidateName];
+                return contractInstance.totalVotesFor.call(web3.utils.asciiToHex(candidateName)).then(function (v) {
+                    $('#' + div_id).html(v.toString());
+                    $('#msg').html('');
+                });
+            }).catch(err => console.error(err));
+        });
+    } catch (err) {
+        console.log(err);
+    }
 }
 
-$(document).ready(function() {
+$(document).ready(function () {
+    if (typeof web3 !== 'undefined') {
+        console.warn('Using web3 detected from external source like Metamask');
+        // Use Mist/MetaMask's provider
+        window.web3 = new Web3(web3.currentProvider);
+        console.log(web3.eth.accounts.givenProvider);
+    } else {
+        console.warn('No web3 detected. Falling back to http://localhost:8545.'
+            + ' You should remove this fallback when you deploy live, as it\'s'
+            + ' inherently insecure. Consider switching to Metamask for development.'
+            + ' More info here: http://truffleframework.com/tutorials/truffle-and-metamask');
+        window.web3 = new Web3(new Web3.providers.HttpProvider(rpc_url[1]));
+    }
+
+    web3.eth.getAccounts(function (error, access) {
+        console.log('web3.eth.getAccounts');
+        if (error !== null) {
+            console.error(error);
+            console.error('There was an error fetching your accounts.');
+            return null;
+        }
+        if (access.length === 0) {
+            console.error('Couldn\'t get any accounts! Make sure your'
+                + ' Ethereum client is configured correctly.');
+            return null;
+        }
+        account = access[0];
+    });
+
+    Voting.setProvider(web3.currentProvider);
     let candidateNames = Object.keys(candidates);
-    for(let i = 0; i < candidateNames.length; i ++) {
+    for (let i = 0; i < candidateNames.length; i++) {
         let name = candidateNames[i];
-        contract.methods.totalVotesFor(
-            web3.utils.asciiToHex(name)
-        ).call().then((f)=>{
-            $('#'+candidates[name]).html(f);
+        Voting.deployed().then(function (contractInstance) {
+            contractInstance.totalVotesFor.call(web3.utils.asciiToHex(name)).then(function (v) {
+                $('#' + candidates[name]).html(v.toString());
+            });
         });
     }
 })

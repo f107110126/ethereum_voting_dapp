@@ -4,7 +4,8 @@
   "description": "tutorial for deploy smart contract.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "webpack",
+    "dev": "webpack-dev-server"
   },
   "repository": {
     "type": "git",
@@ -16,9 +17,14 @@
     "url": "https://github.com/f107110126/ethereum_voting_dapp/issues"
   },
   "homepage": "https://github.com/f107110126/ethereum_voting_dapp#readme",
+  "devDependencies": {
+    "copy-webpack-plugin": "^4.6.0",
+    "webpack": "^4.28.1",
+    "webpack-cli": "^3.2.1",
+    "webpack-dev-server": "^3.1.14"
+  },
   "dependencies": {
-    "ganache-cli": "^6.7.0",
-    "solc": "^0.5.13",
-    "web3": "^1.2.4"
+    "truffle-contract": "^4.0.31",
+    "web3": "^1.0.0-beta.37"
   }
 }
