@@ -104,4 +104,44 @@ contract Voting {
         uint index = indexOfCandidate(candidate);
         return (index == uint(-1) ? false : true);
     }
+
+    /*
+     * This function is used to purchase the tokens. Note the keyword 'payable'
+     * below. By just adding that one keyword to a function, your contract can
+     * now accept Ether from anyone who calls this function. Accepting money can
+     * not get any easier than this!
+     */
+
+    function buy() public payable returns (uint) {
+        uint tokensToBuy = msg.value / tokenPrice;
+        require(tokensToBuy <= balanceTokens, "You can't buy so much more tokens.");
+        voterInfo[msg.sender].voterAddress = msg.sender;
+        voterInfo[msg.sender].tokensBought += tokensToBuy;
+        balanceTokens -= tokensToBuy;
+        return tokensToBuy;
+    }
+
+    function tokensSold() public view returns (uint) {
+        return totalTokens - balanceTokens;
+    }
+
+    function voterDetails(address user) public view returns (uint, uint[] memory) {
+        return (voterInfo[user].tokensBought, voterInfo[user].tokensUsedPerCandidate);
+    }
+
+    /*
+     * All the ether sent by voters who purchased the tokens is in this contract's account.
+     * This method will be used to transfer out all those ethers in to another account.
+     * *** the way this function is written currently, anyone can call this method and transfer
+     * the balance in to their account. In reality, you should add check to make sure only the
+     * owner of this contract can cash out.
+     */
+
+    function transferTo(address payable account) public {
+        account.transfer(address(this).balance);
+    }
+
+    function allCandidates() public view returns (bytes32[] memory) {
+        return candidateList;
+    }
 }

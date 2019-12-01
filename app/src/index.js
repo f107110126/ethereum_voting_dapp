@@ -1,3 +1,4 @@
+// Import libraries we need.
 import { default as Web3 } from 'web3';
 import { default as contract } from 'truffle-contract';
 
@@ -19,43 +20,134 @@ const rpc_url = [
 let account;
 
 import voting_artifacts from '../../build/contracts/Voting.json';
+import { toChecksumAddress } from 'web3-utils';
 
 window.Voting = contract(voting_artifacts);
 
-let candidates = {
-    Rama: 'candidate-1',
-    Nick: 'candidate-2',
-    Jose: 'candidate-3'
-}
+let candidates = {}
 
-window.voteForCandidate = function (candidate) {
+window.voteForCandidate = function () {
     let candidateName = $('#candidate').val();
-    try {
-        $('#msg').html('Vote has been submitted.'
-            + ' The vote count will increment as soon as the'
-            + ' vote is recorded on the blockchain. Please wait.');
-        $('#candidate').val('');
+    let voteTokens = $('#vote-tokens').val();
+    $('#msg').html('Vote has been submitted.'
+        + ' The vote count will increment as soon as the'
+        + ' vote is recorded on the blockchain. Please wait.');
+    $('#candidate').val('');
+    $('#vote-tokens').val('');
 
-        /*
-         * Voting.deployed() returns an instance of the contract. Every call
-         * in Truffle returns a promise which is why we have used then()
-         * everywhere we have a transaction call
-         */
-        console.log(account);
-        Voting.deployed().then(function (contractInstance) {
-            contractInstance.voteForCandidate(web3.utils.asciiToHex(candidateName), {
-                gas: 150000, from: account
-            }).then(function () {
-                let div_id = candidates[candidateName];
-                return contractInstance.totalVotesFor.call(web3.utils.asciiToHex(candidateName)).then(function (v) {
+    /*
+     * Voting.deployed() returns an instance of the contract. Every call
+     * in Truffle returns a promise which is why we have used then()
+     * everywhere we have a transaction call
+     */
+    Voting.deployed().then(function (contractInstance) {
+        contractInstance.voteForCandidate(
+            web3.utils.asciiToHex(candidateName),
+            voteTokens,
+            { gas: 150000, from: account }
+        ).then(function () {
+            let div_id = candidates[candidateName];
+            return contractInstance.totalVotesFor.call(web3.utils.asciiToHex(candidateName))
+                .then(function (v) {
                     $('#' + div_id).html(v.toString());
                     $('#msg').html('');
                 });
-            }).catch(err => console.error(err));
+        }).catch(err => console.error(err));
+    });
+}
+
+window.buyTokens = function () {
+    let tokensToBuy = $('#buy').val();
+    let price = tokensToBuy * tokenPrice;
+    $('#buy-msg').html('Purchase order has been submitted. Please wait.');
+    Voting.deployed().then(function (contractInstance) {
+        contractInstance.buy({ value: web3.utils.toWei(price, 'ether'), from: account })
+            .then(function (v) {
+                $('#buy-msg').html('');
+                web3.eth.getBalance(contractInstance.address, function (error, result) {
+                    $('#contract-balance').html(web3.utils.fromWei(result.toString()) + ' Ether');
+                });
+            });
+    });
+    populateTokenData();
+}
+
+window.lookupVoterInfo = function () {
+    let address = $('#voter-info').val();
+    Voting.deployed().then(function (contractInstance) {
+        contractInstancevoterDetails.call(address).then(function (v) {
+            $('#tokens-bought').html('Total tokens bought: ' + v[0].toString());
+            let votesPerCandidate = v[1];
+            $('#votes-cast').empty();
+            $('#votes-cast').append('Votes cast per candidate: <br>');
+            let allCandidates = Object.keys(candidates);
+            for (let i = 0; i < allCandidates.length; i++) {
+                $('#votes-cast').append(allCandidates[i] + ': ' + votesPerCandidate[i] + '<br>');
+            }
+        })
+    })
+}
+
+function populateCandidates() {
+    Voting.deployed().then(function (contractInstance) {
+        console.log(account)
+        contractInstance.candiddateName.call(0).then(function(v) {
+            console.log(v);
         });
-    } catch (err) {
-        console.log(err);
+        contractInstance.allCandidates.call().then(function (candidateArray) {
+            console.log('after call');
+            for (let i = 0; i < candidateArray.length; i++) {
+                /*
+                 * We store the candidate names as bytes32 on the blockain. We use
+                 * the handy toUtf8 method to convert from bytes32 to string.
+                 */
+                candidates[web3.toUtf8(candidateArray[i])] = 'candidate-' + i;
+            }
+            setupCandidateRows();
+            populateCandidateVotes();
+            populateTokenData();
+        }).catch(error => {
+            console.error(error);
+        });
+    });
+}
+
+function populateCandidateVotes() {
+    let candidateNames = Object.keys(candidates);
+    for (let i = 0; i < candidateNames.length; i++) {
+        let name = candidateNames[i];
+        Voting.deployed().then(function (contractInstance) {
+            contractInstance.totalVotesFor.call(name).then(function (v) {
+                $('#' + candidates[name]).html(v.toString());
+            })
+        });
     }
+}
+
+function setupCandidateRows() {
+    Object.keys(candidates).forEach(function (candidate) {
+        $('#candidate-rows').append('<tr><td>' + candidate + '</td><td id="' + candidates[candidate] + '"></td></tr>');
+    })
+}
+
+/*
+ * Fetch the total tokens, tokens available for sale and the price of each token and display in the UI.
+ */
+function populateTokenData() {
+    Voting.deployed().then(function (contractInstance) {
+        contractInstance.totalTokens().then(function (v) {
+            $('#tokens-total').html(v.toString());
+        });
+        contractInstance.tokensSold.call().then(function (v) {
+            $('#tokens-sold').html(v.toString());
+        });
+        contractInstance.tokenPrice().them(function (v) {
+            tokenPrice = perseFloat(web3.fromwei(v.toString()));
+        })
+        web3.eth.getBalance(contractInstance.address, function (error, result) {
+            $('#contract-balance').html(web3.fromWei(result.toString()) + ' Ether');
+        })
+    })
 }
 
 $(document).ready(function () {
@@ -73,7 +165,6 @@ $(document).ready(function () {
     }
 
     web3.eth.getAccounts(function (error, access) {
-        console.log('web3.eth.getAccounts');
         if (error !== null) {
             console.error(error);
             console.error('There was an error fetching your accounts.');
@@ -88,13 +179,5 @@ $(document).ready(function () {
     });
 
     Voting.setProvider(web3.currentProvider);
-    let candidateNames = Object.keys(candidates);
-    for (let i = 0; i < candidateNames.length; i++) {
-        let name = candidateNames[i];
-        Voting.deployed().then(function (contractInstance) {
-            contractInstance.totalVotesFor.call(web3.utils.asciiToHex(name)).then(function (v) {
-                $('#' + candidates[name]).html(v.toString());
-            });
-        });
-    }
-})
+    populateCandidates();
+});
