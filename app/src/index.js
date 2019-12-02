@@ -24,7 +24,8 @@ import { toChecksumAddress } from 'web3-utils';
 
 window.Voting = contract(voting_artifacts);
 
-let candidates = {}
+let candidates = {};
+let tokenPrice = null;
 
 window.voteForCandidate = function () {
     let candidateName = $('#candidate').val();
@@ -61,12 +62,10 @@ window.buyTokens = function () {
     let price = tokensToBuy * tokenPrice;
     $('#buy-msg').html('Purchase order has been submitted. Please wait.');
     Voting.deployed().then(function (contractInstance) {
-        contractInstance.buy({ value: web3.utils.toWei(price, 'ether'), from: account })
+        contractInstance.buy({ value: web3.utils.toWei(price.toString(), 'ether'), from: account })
             .then(function (v) {
                 $('#buy-msg').html('');
-                web3.eth.getBalance(contractInstance.address, function (error, result) {
-                    $('#contract-balance').html(web3.utils.fromWei(result.toString()) + ' Ether');
-                });
+                populateTokenData();
             });
     });
     populateTokenData();
@@ -75,8 +74,9 @@ window.buyTokens = function () {
 window.lookupVoterInfo = function () {
     let address = $('#voter-info').val();
     Voting.deployed().then(function (contractInstance) {
-        contractInstancevoterDetails.call(address).then(function (v) {
+        contractInstance.voterDetails.call(address).then(function (v) {
             $('#tokens-bought').html('Total tokens bought: ' + v[0].toString());
+            console.log(v);
             let votesPerCandidate = v[1];
             $('#votes-cast').empty();
             $('#votes-cast').append('Votes cast per candidate: <br>');
@@ -90,18 +90,13 @@ window.lookupVoterInfo = function () {
 
 function populateCandidates() {
     Voting.deployed().then(function (contractInstance) {
-        console.log(account)
-        contractInstance.candiddateName.call(0).then(function(v) {
-            console.log(v);
-        });
         contractInstance.allCandidates.call().then(function (candidateArray) {
-            console.log('after call');
             for (let i = 0; i < candidateArray.length; i++) {
                 /*
                  * We store the candidate names as bytes32 on the blockain. We use
                  * the handy toUtf8 method to convert from bytes32 to string.
                  */
-                candidates[web3.toUtf8(candidateArray[i])] = 'candidate-' + i;
+                candidates[web3.utils.hexToUtf8(candidateArray[i])] = 'candidate-' + (i + 1);
             }
             setupCandidateRows();
             populateCandidateVotes();
@@ -117,7 +112,7 @@ function populateCandidateVotes() {
     for (let i = 0; i < candidateNames.length; i++) {
         let name = candidateNames[i];
         Voting.deployed().then(function (contractInstance) {
-            contractInstance.totalVotesFor.call(name).then(function (v) {
+            contractInstance.totalVotesFor.call(web3.utils.asciiToHex(name)).then(function (v) {
                 $('#' + candidates[name]).html(v.toString());
             })
         });
@@ -141,12 +136,13 @@ function populateTokenData() {
         contractInstance.tokensSold.call().then(function (v) {
             $('#tokens-sold').html(v.toString());
         });
-        contractInstance.tokenPrice().them(function (v) {
-            tokenPrice = perseFloat(web3.fromwei(v.toString()));
-        })
+        contractInstance.tokenPrice().then(function (v) {
+            tokenPrice = parseFloat(web3.utils.fromWei(v.toString()));
+            $('#token-cost').html(tokenPrice);
+        });
         web3.eth.getBalance(contractInstance.address, function (error, result) {
-            $('#contract-balance').html(web3.fromWei(result.toString()) + ' Ether');
-        })
+            $('#contract-balance').html(web3.utils.fromWei(result.toString()) + ' Ether');
+        });
     })
 }
 
@@ -155,7 +151,6 @@ $(document).ready(function () {
         console.warn('Using web3 detected from external source like Metamask');
         // Use Mist/MetaMask's provider
         window.web3 = new Web3(web3.currentProvider);
-        console.log(web3.eth.accounts.givenProvider);
     } else {
         console.warn('No web3 detected. Falling back to http://localhost:8545.'
             + ' You should remove this fallback when you deploy live, as it\'s'
@@ -176,6 +171,7 @@ $(document).ready(function () {
             return null;
         }
         account = access[0];
+        $('input#voter-info').val(account);
     });
 
     Voting.setProvider(web3.currentProvider);

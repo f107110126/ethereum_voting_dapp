@@ -6,6 +6,6 @@ module.exports = function (deployer) {
     1000,
     web3.utils.toWei('0.001', 'ether'),
     ['Rama', 'Nick', 'Jose'].map(name => web3.utils.asciiToHex(name)),
-    { gas: 750000 }
+    { gas: 5050000 }
   );
 };

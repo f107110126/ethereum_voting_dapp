@@ -58,22 +58,24 @@
         <div class="row">
             <h2>Token Stats</h2>
             <div class="table-responsive">
-                <tr>
-                    <td>Tokens For Sale</td>
-                    <td id="tokens-total"></td>
-                </tr>
-                <tr>
-                    <td>Tokens Sold</td>
-                    <td id="tokens-sold"></td>
-                </tr>
-                <tr>
-                    <td>Price Per Token</td>
-                    <td id="token-cost"></td>
-                </tr>
-                <tr>
-                    <td>Balance in the contract</td>
-                    <td id="cantract-balance"></td>
-                </tr>
+                <table class="table table-bordered">
+                    <tr>
+                        <td>Tokens For Sale</td>
+                        <td id="tokens-total"></td>
+                    </tr>
+                    <tr>
+                        <td>Tokens Sold</td>
+                        <td id="tokens-sold"></td>
+                    </tr>
+                    <tr>
+                        <td>Price Per Token</td>
+                        <td id="token-cost"></td>
+                    </tr>
+                    <tr>
+                        <td>Balance in the contract</td>
+                        <td id="contract-balance"></td>
+                    </tr>
+                </table>
             </div>
         </div>
         <div class="row margin-top-3">
@@ -90,7 +92,7 @@
                 <input type="text" id="voter-info" class="col-sm-8" placeholder="Enter toe voter address">
                 <button onclick="lookupVoterInfo();" class="btn btn-primary">Lookup</button>
                 <div class="voter-details row text-left">
-                    <div id="toekns-bought" class="margin-top-3 col-md-12"></div>
+                    <div id="tokens-bought" class="margin-top-3 col-md-12"></div>
                     <div id="votes-cast" class="col-md-12"></div>
                 </div>
             </div>
