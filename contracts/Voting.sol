@@ -28,19 +28,19 @@ contract Voting {
     }
 
     // This function returns the votes a candidate has received so far
-    function totalVotesFor(bytes32 candidate) view public returns (uint256) {
-        require(validCandidate(candidate));
+    function totalVotesFor(bytes32 candidate) public view returns (uint256) {
+        require(validCandidate(candidate), "Candidate's not validate.");
         return votesReceived[candidate];
     }
 
     // This function increments the vote count for the specified candidate. This is
     // equivalent to casting a vote.
     function voteForCandidate(bytes32 candidate) public {
-        require(validCandidate(candidate));
+        require(validCandidate(candidate), "Candidate's not validate.");
         votesReceived[candidate] += 1;
     }
 
-    function validCandidate(bytes32 candidate) view public returns (bool) {
+    function validCandidate(bytes32 candidate) public view returns (bool) {
         for(uint i = 0; i < candidateList.length; i++) {
             if (candidateList[i] == candidate) {
                 return true;
